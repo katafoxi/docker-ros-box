@@ -2,13 +2,13 @@
 
 set -e
 
-current_dir=`pwd -P`
+current_dir=$(pwd -P)
 script_dir="$( cd "$(dirname "$0")" ; pwd -P )"
 
 sudo=y
 
 # If user is part of docker group, sudo isn't necessary
-if groups $USER | grep &>/dev/null '\bdocker\b'; then
+if groups "$USER" | grep &>/dev/null '\bdocker\b'; then
     sudo=n
 fi
 
@@ -17,7 +17,7 @@ then
 	echo
 	echo "Builds a docker image to run ROS and deploys a basic setup to work with it"
 	echo
-	echo "Usage: `basename $0` [ros_distro] [target]"
+	echo "Usage: $(basename $0) [ros_distro] [target]"
 	echo "    ros_distro        The ROS distribution to work with (lunar, kinetic, etc.)"
 	echo "    target            The target directory to deploy the basic setup"
 	echo
@@ -27,9 +27,10 @@ fi
 ros_distro="$1"
 target="$2"
 image_tag="docker-ros-box-${ros_distro}"
-uid=`id -u`
-gid=`id -g`
-user_name="${ros_distro}-dev"
+user=$USER
+uid=$(id -u)
+gid=$(id -g)
+
 
 # Make sure the target exists
 if [ ! -d "${target}" ]
@@ -56,7 +57,8 @@ if [ "$sudo" = "n" ]; then
 	    --build-arg ros_distro="${ros_distro}" \
         --build-arg uid="${uid}" \
         --build-arg gid="${gid}" \
-    	-t ${image_tag} \
+        --build-arg user="${user}" \
+    	-t "${image_tag}" \
     	.
 else
     sudo docker build \
@@ -64,6 +66,7 @@ else
 	    --build-arg ros_distro="${ros_distro}" \
         --build-arg uid="${uid}" \
         --build-arg gid="${gid}" \
+        --build-arg user="${user}" \
     	-t ${image_tag} \
     	.
 fi
@@ -83,8 +86,8 @@ if [ "$sudo" = "n" ]; then
             --volume=$XSOCK:$XSOCK:rw \
             --volume=$XAUTH:$XAUTH:rw \
             --env="XAUTHORITY=${XAUTH}" \
-            --device=/dev/dri/card0:/dev/dri/card0 \
-            -v "${target}/src:/home/${ros_distro}-dev/catkin_ws/src" \
+            --device=/dev/ttyACM0:/dev/ttyACM0 \
+            -v "${target}/src:/home/${user}/catkin_ws/src" \
             --name "${container_name}" \
             -it ${image_tag}
 
@@ -95,8 +98,8 @@ else
             --volume=$XSOCK:$XSOCK:rw \
             --volume=$XAUTH:$XAUTH:rw \
             --env="XAUTHORITY=${XAUTH}" \
-            --device=/dev/dri/card0:/dev/dri/card0 \
-            -v "${target}/src:/home/${ros_distro}-dev/catkin_ws/src" \
+            --device=/dev/ttyACM0:/dev/ttyACM0 \
+            -v "${target}/src:/home/${user}/catkin_ws/src" \
             --name "${container_name}" \
             -it ${image_tag}
 
