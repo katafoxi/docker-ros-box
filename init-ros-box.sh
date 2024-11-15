@@ -5,11 +5,12 @@ set -e
 current_dir=$(pwd -P)
 script_dir="$( cd "$(dirname "$0")" ; pwd -P )"
 
-sudo=y
 
 # If user is part of docker group, sudo isn't necessary
 if groups "$USER" | grep &>/dev/null '\bdocker\b'; then
-    sudo=n
+    sudo=""
+else
+    sudo="sudo"
 fi
 
 if [ "$2" == "" ]
@@ -17,7 +18,7 @@ then
 	echo
 	echo "Builds a docker image to run ROS and deploys a basic setup to work with it"
 	echo
-	echo "Usage: $(basename $0) [ros_distro] [target]"
+	echo "Usage: $(basename "$0") [ros_distro] [target]"
 	echo "    ros_distro        The ROS distribution to work with (lunar, kinetic, etc.)"
 	echo "    target            The target directory to deploy the basic setup"
 	echo
@@ -33,13 +34,14 @@ gid=$(id -g)
 
 
 # Make sure the target exists
+#------------------------------------------------------------------------------
 if [ ! -d "${target}" ]
 then
 	mkdir -p "${target}"
 fi
 target=$( cd "${target}" ; pwd -P )
 
-
+#------------------------------------------------------------------------------
 echo "Prepare the target environment..."
 # Copy target files
 /bin/cp -Ri "${script_dir}/target/"* "${target}/"
@@ -49,65 +51,53 @@ then
 fi
 
 # Build the docker image
+#------------------------------------------------------------------------------
 echo "Build the docker image... (This can take some time)"
 cd "${script_dir}/docker"
-if [ "$sudo" = "n" ]; then
-    docker build \
-        --quiet \
-	    --build-arg ros_distro="${ros_distro}" \
-        --build-arg uid="${uid}" \
-        --build-arg gid="${gid}" \
-        --build-arg user="${user}" \
-    	-t "${image_tag}" \
-    	.
-else
-    sudo docker build \
-        --quiet \
-	    --build-arg ros_distro="${ros_distro}" \
-        --build-arg uid="${uid}" \
-        --build-arg gid="${gid}" \
-        --build-arg user="${user}" \
-    	-t ${image_tag} \
-    	.
-fi
 
+$sudo docker build \
+    --quiet \
+    --build-arg ros_distro="${ros_distro}" \
+    --build-arg uid="${uid}" \
+    --build-arg gid="${gid}" \
+    --build-arg user="${user}" \
+    -t "${image_tag}" \
+    .
+
+
+# Create the docker container
+#------------------------------------------------------------------------------
 echo "create a new container from this image..."
-container_name="`echo ${target} | sed -e 's/[^a-zA-Z0-9_.-][^a-zA-Z0-9_.-]*/-/g' | sed -e 's/^[^a-zA-Z0-9]*//g'`"
+container_name="$( echo "${target}" | \
+sed -e 's/[^a-zA-Z0-9_.-][^a-zA-Z0-9_.-]*/-/g' | \
+sed -e 's/^[^a-zA-Z0-9]*//g')"
+
 cd "${target}"
 
 XSOCK=/tmp/.X11-unix
 XAUTH=/tmp/.docker.xauth
 touch $XAUTH
-xauth nlist $DISPLAY | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
+xauth nlist "$DISPLAY" | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
 
-if [ "$sudo" = "n" ]; then
-    docker create \
-            -e DISPLAY=$DISPLAY \
-            --volume=$XSOCK:$XSOCK:rw \
-            --volume=$XAUTH:$XAUTH:rw \
-            --env="XAUTHORITY=${XAUTH}" \
-            --device=/dev/ttyACM0:/dev/ttyACM0 \
-            -v "${target}/src:/home/${user}/catkin_ws/src" \
-            --name "${container_name}" \
-            -it ${image_tag}
 
-    docker ps -aqf "name=${container_name}" > "${target}/docker_id"
-else
-    sudo docker create \
-            -e DISPLAY=$DISPLAY \
-            --volume=$XSOCK:$XSOCK:rw \
-            --volume=$XAUTH:$XAUTH:rw \
-            --env="XAUTHORITY=${XAUTH}" \
-            --device=/dev/ttyACM0:/dev/ttyACM0 \
-            -v "${target}/src:/home/${user}/catkin_ws/src" \
-            --name "${container_name}" \
-            -it ${image_tag}
+$sudo docker create \
+        -e DISPLAY="$DISPLAY" \
+        --volume=$XSOCK:$XSOCK:rw \
+        --volume=$XAUTH:$XAUTH:rw \
+        --env="XAUTHORITY=${XAUTH}" \
+        --device=/dev/ttyACM0:/dev/ttyACM0 \
+        -v "${target}/src:/home/${user}/catkin_ws/src" \
+        --name "${container_name}" \
+        --cidfile "${target}/docker_id2" \
+        -it "${image_tag}"
 
-    sudo docker ps -aqf "name=${container_name}" > "${target}/docker_id"
-fi
+$sudo docker ps -aqf "name=${container_name}" > "${target}/docker_id"
+
 chmod 444 "${target}/docker_id"
 
+
 # That's it!
+#------------------------------------------------------------------------------
 cd "${current_dir}"
 
 echo
