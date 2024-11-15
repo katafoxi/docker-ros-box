@@ -8,9 +8,9 @@ script_dir="$( cd "$(dirname "$0")" ; pwd -P )"
 
 # If user is part of docker group, sudo isn't necessary
 if groups "$USER" | grep &>/dev/null '\bdocker\b'; then
-    sudo=""
+    sudo_stat=""
 else
-    sudo="sudo"
+    sudo_stat="sudo"
 fi
 
 if [ "$2" == "" ]
@@ -55,7 +55,7 @@ fi
 echo "Build the docker image... (This can take some time)"
 cd "${script_dir}/docker"
 
-$sudo docker build \
+$sudo_stat docker build \
     --quiet \
     --build-arg ros_distro="${ros_distro}" \
     --build-arg uid="${uid}" \
@@ -80,18 +80,18 @@ touch $XAUTH
 xauth nlist "$DISPLAY" | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
 
 
-$sudo docker create \
+$sudo_stat docker create \
         -e DISPLAY="$DISPLAY" \
         --volume=$XSOCK:$XSOCK:rw \
         --volume=$XAUTH:$XAUTH:rw \
         --env="XAUTHORITY=${XAUTH}" \
-        --device=/dev/ttyACM0:/dev/ttyACM0 \
+        --device=/dev/ttyACM0:/dev/ttyACM0:rw \
         -v "${target}/src:/home/${user}/catkin_ws/src" \
         --name "${container_name}" \
-        --cidfile "${target}/docker_id2" \
+        --cidfile "${target}/docker_id" \
         -it "${image_tag}"
 
-$sudo docker ps -aqf "name=${container_name}" > "${target}/docker_id"
+# $sudo docker ps -aqf "name=${container_name}" > "${target}/docker_id"
 
 chmod 444 "${target}/docker_id"
 

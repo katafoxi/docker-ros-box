@@ -1,14 +1,13 @@
 #!/bin/bash
 
-current_dir=`pwd -P`
-script_dir="$( cd "$(dirname "$0")" ; pwd -P )"
-container_id=`cat "${script_dir}/docker_id"`
+script_dir="$( cd "$(dirname "$0")" || exit ; pwd -P )"
+container_id=$(cat "${script_dir}/docker_id")
 
-sudo=y
+sudo_stat="y"
 
 # If user is part of docker group, sudo isn't necessary
-if groups $USER | grep &>/dev/null '\bdocker\b'; then
-    sudo = n
+if groups "$USER" | grep &>/dev/null '\bdocker\b'; then
+    sudo_stat="n"
 fi
 
 if [ "${container_id}" == "" ]
@@ -19,23 +18,23 @@ fi
 
 # Check if the container is running
 
-if [ "$sudo" = "y" ]; then
+if [ "$sudo_stat" = "y" ]; then
 
-    if [ "`sudo docker ps -qf "id=${container_id}"`" == "" ]
+    if [ "$(sudo docker ps -qf "id=${container_id}")" == "" ]
     then
-    	echo "Starting previously stopped container..."
+    	echo "Starting as 'sudo' previously stopped container..."
     	sudo docker start "${container_id}"
     fi
 
     # Joining the container
-    sudo docker exec -ti ${container_id} /rosbox_entrypoint.sh
+    sudo docker exec -ti "${container_id}" /rosbox_entrypoint.sh
 else
-    if [ "`docker ps -qf "id=${container_id}"`" == "" ]
+    if [ "$(docker ps -qf "id=${container_id}")" == "" ]
     then
     	echo "Starting previously stopped container..."
     	docker start "${container_id}"
     fi
 
-    docker exec -ti ${container_id} /rosbox_entrypoint.sh
+    docker exec -ti "${container_id}" /rosbox_entrypoint.sh
 fi
 
