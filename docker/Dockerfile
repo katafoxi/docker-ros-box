@@ -48,7 +48,7 @@ ENV USERNAME=${user}
 RUN useradd -m $USERNAME && \
     echo "$USERNAME:$USERNAME" | chpasswd && \
     usermod --shell /bin/bash $USERNAME && \
-    usermod -aG sudo $USERNAME && \
+    usermod -aG sudo,dialout $USERNAME && \
     echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
     chmod 0440 /etc/sudoers.d/$USERNAME && \
     # Replace 1000 with your user/group id
@@ -59,6 +59,9 @@ RUN useradd -m $USERNAME && \
 
 USER ${USERNAME}
 
+# https://answers.ros.org/question/10238/unable-to-contact-my-own-server/
+ENV ROS_HOSTNAME=localhost
+ENV ROS_MASTER_URI=http://localhost:11311
 
 #COPY bashrc ${HOMEDIR}/.bashrc
 #COPY bashrc /root/.bashrc

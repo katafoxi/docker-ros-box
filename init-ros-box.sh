@@ -61,7 +61,7 @@ $sudo_stat docker build \
     --build-arg uid="${uid}" \
     --build-arg gid="${gid}" \
     --build-arg user="${user}" \
-    -t "${image_tag}" \
+    --tag "${image_tag}" \
     .
 
 
@@ -85,8 +85,9 @@ $sudo_stat docker create \
         --volume=$XSOCK:$XSOCK:rw \
         --volume=$XAUTH:$XAUTH:rw \
         --env="XAUTHORITY=${XAUTH}" \
-        --device=/dev/ttyACM0:/dev/ttyACM0:rw \
-        -v "${target}/src:/home/${user}/catkin_ws/src" \
+        --device='/dev/ttyACM0:/dev/ttyACM0:rw' \
+        --volume "${target}/src:/home/${user}/catkin_ws/src" \
+        --volume "/etc/localtime:/etc/localtime:ro" \
         --name "${container_name}" \
         --cidfile "${target}/docker_id" \
         -it "${image_tag}"
