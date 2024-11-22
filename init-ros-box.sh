@@ -28,9 +28,9 @@ fi
 ros_distro="$1"
 target="$2"
 image_tag="docker-ros-box-${ros_distro}"
-user=$USER
-uid=$(id -u)
-gid=$(id -g)
+user_arg=$USER
+uid_arg=$(id -u)
+gid_arg=$(id -g)
 
 
 # Make sure the target exists
@@ -58,9 +58,9 @@ cd "${script_dir}/docker"
 $sudo_stat docker build \
     --quiet \
     --build-arg ros_distro="${ros_distro}" \
-    --build-arg uid="${uid}" \
-    --build-arg gid="${gid}" \
-    --build-arg user="${user}" \
+    --build-arg uid_arg="${uid_arg}" \
+    --build-arg gid_arg="${gid_arg}" \
+    --build-arg user_arg="${user_arg}" \
     --tag "${image_tag}" \
     .
 
@@ -74,22 +74,32 @@ sed -e 's/^[^a-zA-Z0-9]*//g')"
 
 cd "${target}"
 
-XSOCK=/tmp/.X11-unix
-XAUTH=/tmp/.docker.xauth
-touch $XAUTH
-xauth nlist "$DISPLAY" | sed -e 's/^..../ffff/' | xauth -f $XAUTH nmerge -
+XSOCK="/tmp/.X11-unix"
+XAUTHDIR="/tmp/.X11_to_docker.xauth"
+XAUTH="${XAUTHDIR}/.docker.xauth"
+if [ -e "${XAUTHDIR}" ]
+then 
+    sudo rm -rf "${XAUTHDIR}"
+fi
+
+mkdir -p "${XAUTHDIR}"
+touch "${XAUTH}"
+xauth nlist "$DISPLAY" | sed -e 's/^..../ffff/' | xauth -f "${XAUTH}" nmerge -
+chmod 755 $XAUTH
 
 
 $sudo_stat docker create \
-        -e DISPLAY="$DISPLAY" \
-        --volume=$XSOCK:$XSOCK:rw \
-        --volume=$XAUTH:$XAUTH:rw \
-        --env="XAUTHORITY=${XAUTH}" \
+        -e DISPLAY=unix$DISPLAY \
+        -v $XSOCK:$XSOCK:rw \
+        -v $XAUTHDIR:$XAUTHDIR:rw \
+        -e "XAUTHORITY=${XAUTH}" \
         --device='/dev/ttyACM0:/dev/ttyACM0:rw' \
-        --volume "${target}/src:/home/${user}/catkin_ws/src" \
-        --volume "/etc/localtime:/etc/localtime:ro" \
+        -v "${target}/src:/home/${user_arg}/catkin_ws/src" \
+        -v "/etc/localtime:/etc/localtime:ro" \
+        -v "$HOME/.Xauthority:/root/.Xauthority:rw" \
         --name "${container_name}" \
         --cidfile "${target}/docker_id" \
+        --network=host \
         -it "${image_tag}"
 
 # $sudo docker ps -aqf "name=${container_name}" > "${target}/docker_id"

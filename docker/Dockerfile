@@ -11,6 +11,7 @@ RUN <<EOT bash
       git \
       pip \
       wget \
+      vim \
       freeglut3-dev \
       libglew-dev \
       libxkbcommon0 \
@@ -36,38 +37,40 @@ EOT
 # x-window-system \
 # mesa-utils \
 
-ARG uid
-ARG gid
-ARG user
-ARG HOMEDIR="/home/${user}"
+ARG uid_arg
+ARG gid_arg
+ARG user_arg
+ARG HOMEDIR="/home/${user_arg}"
 ARG WS="${HOMEDIR}/catkin_ws"
 
 ENV QT_X11_NO_MITSHM=1
-ENV USERNAME=${user}
+ENV USER=${user_arg}
+ENV EDITOR='vim'
 
-RUN useradd -m $USERNAME && \
-    echo "$USERNAME:$USERNAME" | chpasswd && \
-    usermod --shell /bin/bash $USERNAME && \
-    usermod -aG sudo,dialout $USERNAME && \
-    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USERNAME && \
-    chmod 0440 /etc/sudoers.d/$USERNAME && \
+
+RUN useradd -m $USER && \
+    echo "$USER:$USER" | chpasswd && \
+    usermod --shell /bin/bash $USER && \
+    usermod -aG sudo,dialout $USER && \
+    echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers.d/$USER && \
+    chmod 0440 /etc/sudoers.d/$USER && \
     # Replace 1000 with your user/group id
-    usermod  --uid ${uid} $USERNAME && \
-    groupmod --gid ${gid} $USERNAME && \
-    mkdir -p /home/$USERNAME/catkin_ws/src && \
-    chown ${uid}:${gid} -R /home/$USERNAME
+    usermod  --uid ${uid_arg} $USER && \
+    groupmod --gid ${gid_arg} $USER && \
+    mkdir -p /home/$USER/catkin_ws/src && \
+    chown ${uid_arg}:${gid_arg} -R /home/$USER
 
-USER ${USERNAME}
+USER ${USER}
 
 # https://answers.ros.org/question/10238/unable-to-contact-my-own-server/
 ENV ROS_HOSTNAME=localhost
 ENV ROS_MASTER_URI=http://localhost:11311
 
-#COPY bashrc ${HOMEDIR}/.bashrc
-#COPY bashrc /root/.bashrc
-#COPY bash_profile ${HOMEDIR}/.bash_profile
-#COPY bash_profile /root/.bash_profile
-WORKDIR /home/$USERNAME/catkin_ws
+COPY bashrc ${HOMEDIR}/.bashrc
+COPY bashrc /root/.bashrc
+COPY bash_profile ${HOMEDIR}/.bash_profile
+COPY bash_profile /root/.bash_profile
+WORKDIR /home/$USER/catkin_ws
 
 COPY rosbox_entrypoint.sh /rosbox_entrypoint.sh
 ENTRYPOINT /rosbox_entrypoint.sh

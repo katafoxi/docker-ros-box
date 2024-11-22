@@ -1,4 +1,3 @@
-#
 # ~/.bashrc
 #
 
@@ -6,16 +5,39 @@
 [[ $- != *i* ]] && return
 
 alias ls='ls --color=auto'
-alias ll='ls -l'
+alias ll='ls -al'
 alias rm='rm -i'
 alias mv='mv -i'
 alias cp='cp -i'
 alias grep='grep --color=auto'
-export EDITOR='vim'
-export LESS="-iMSx4 -FX -SR"
-alias less="less ${LESS}"
-export PAGER="less ${LESS}"
-export QT_X11_NO_MITSHM=1
+
+
+#export LESS="-iMSx4 -FX -SR"
+#alias less="less ${LESS}"
+#export PAGER="less ${LESS}"
+
+# don't put duplicate lines or lines starting with space in the history.
+# See bash(1) for more options
+
+# for setting history length see HISTSIZE and HISTFILESIZE in bash(1)
+HISTSIZE=1000
+HISTFILESIZE=2000
+
+# don't put duplicate lines or lines starting with space in the history.
+export HISTCONTROL="ignoreboth:erasedups"
+
+HISTIGNORE=" *:&:?:??:&\&:pwd:cd:cd ??:cd -:roscd *:jobs:set -x:exit:history:editenv:[h ]*:[ \t]*:ssh rpi5: "
+export HISTIGNORE
+
+# append to the history file, don't overwrite it
+shopt -s histappend
+export PROMPT_COMMAND='history -a'
+
+
+# check the window size after each command and, if necessary,
+# update the values of LINES and COLUMNS.
+shopt -s checkwinsize
+shopt -s cmdhist
 
 function returncode
 {
@@ -34,6 +56,6 @@ else
 	PS1='\[\033[0;31m\]$(returncode)\[\033[01;32m\]\u\[\033[00m\]@\[\033[01;33m\]\h\[\033[01;34m\] ${PWD} \$\[\033[00m\] '
 fi
 
-export BUILDDIR=/tmp
-export MAKEFLAGS="-j$(nproc) $MAKEFLAGS"
-export LD_LIBRARY_PATH="/usr/lib:$LD_LIBRARY_PATH"
+#export BUILDDIR=/tmp
+#export MAKEFLAGS="-j$(nproc) $MAKEFLAGS"
+#export LD_LIBRARY_PATH="/usr/lib:$LD_LIBRARY_PATH"
